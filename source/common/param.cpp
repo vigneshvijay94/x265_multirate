@@ -228,6 +228,9 @@ void x265_param_default(x265_param* param)
     param->bLimitSAO = 0;
     param->selectiveSAO = 0;
 
+    /* multi-rate mode */
+    param->mrMode = 0;
+
     /* Coding Quality */
     param->cbQpOffset = 0;
     param->crQpOffset = 0;
@@ -1104,6 +1107,7 @@ int x265_param_parse(x265_param* p, const char* name, const char* value)
         p->rc.pbFactor = 1.0;
     }
     OPT("analysis-reuse-mode") p->analysisReuseMode = parseName(value, x265_analysis_names, bError); /*DEPRECATED*/
+    OPT("mr-mode") p->mrMode = atoi(value);
     OPT("sar")
     {
         p->vui.aspectRatioIdc = parseName(value, x265_sar_names, bError);

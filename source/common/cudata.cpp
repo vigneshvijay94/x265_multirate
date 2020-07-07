@@ -201,6 +201,7 @@ void CUData::initialize(const CUDataMemPool& dataPool, uint32_t depth, const x26
         m_refIdx[1] = (int8_t*)charBuf; charBuf += m_numPartitions;
         m_cuDepth            = charBuf; charBuf += m_numPartitions;
         m_predMode           = charBuf; charBuf += m_numPartitions; /* the order up to here is important in initCTU() and initSubCU() */
+		m_mrRefDepth		 = charBuf; charBuf += m_numPartitions; /* multi-rate */
         m_partSize           = charBuf; charBuf += m_numPartitions;
         m_skipFlag[0]        = charBuf; charBuf += m_numPartitions;
         m_skipFlag[1]        = charBuf; charBuf += m_numPartitions;
@@ -242,6 +243,7 @@ void CUData::initialize(const CUDataMemPool& dataPool, uint32_t depth, const x26
         m_refIdx[1] = (int8_t*)charBuf; charBuf += m_numPartitions;
         m_cuDepth            = charBuf; charBuf += m_numPartitions;
         m_predMode           = charBuf; charBuf += m_numPartitions; /* the order up to here is important in initCTU() and initSubCU() */
+		m_mrRefDepth		 = charBuf; charBuf += m_numPartitions; /* multi-rate */
         m_partSize           = charBuf; charBuf += m_numPartitions;
         m_skipFlag[0]        = charBuf; charBuf += m_numPartitions;
         m_skipFlag[1]        = charBuf; charBuf += m_numPartitions;

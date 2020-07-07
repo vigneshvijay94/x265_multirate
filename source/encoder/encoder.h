@@ -203,6 +203,8 @@ public:
     FILE*              m_analysisFileOut;
     FILE*              m_naluFile;
     x265_param*        m_param;
+// additional analysis file for multi-rate
+	FILE*			   m_mrDataFile;
     x265_param*        m_latestParam;     // Holds latest param during a reconfigure
     RateControl*       m_rateControl;
     Lookahead*         m_lookahead;
