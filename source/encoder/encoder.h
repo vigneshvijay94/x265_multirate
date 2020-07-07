@@ -204,7 +204,9 @@ public:
     FILE*              m_naluFile;
     x265_param*        m_param;
 // additional analysis file for multi-rate
-	FILE*			   m_mrDataFile;
+    FILE*              m_mr_loadFile1;
+    FILE*              m_mr_loadFile2;
+    FILE*              m_mr_saveFile;
     x265_param*        m_latestParam;     // Holds latest param during a reconfigure
     RateControl*       m_rateControl;
     Lookahead*         m_lookahead;

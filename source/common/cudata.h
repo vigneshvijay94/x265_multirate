@@ -197,7 +197,8 @@ public:
     uint8_t*      m_tqBypass;         // array of CU lossless flags
     int8_t*       m_refIdx[2];        // array of motion reference indices per list
     uint8_t*      m_cuDepth;          // array of depths
-	uint8_t*	  m_mrRefDepth;		  // array of multi-rate reference depths
+    uint8_t*      m_mrRefDepth1;      // array of multi-rate reference depths (highest quality)
+    uint8_t*      m_mrRefDepth2;      // array of multi-rate reference depths (lowest quality)
     uint8_t*      m_predMode;         // array of prediction modes
     uint8_t*      m_partSize;         // array of partition sizes
     uint8_t*      m_mergeFlag;        // array of merge flags
@@ -208,8 +209,8 @@ public:
     uint8_t*      m_transformSkip[3]; // array of transform skipping flags per plane
     uint8_t*      m_cbf[3];           // array of coded block flags (CBF) per plane
     uint8_t*      m_chromaIntraDir;   // array of intra directions (chroma)
-    // with the additional m_mrRefDepth, this number grows to 25:
-    enum { BytesPerPartition = 25 };  // combined sizeof() of all per-part data
+    // with the additional m_mrRefDepth1 and m_mrRefDepth2, this number grows to 26:
+    enum { BytesPerPartition = 26 };  // combined sizeof() of all per-part data
 
     sse_t*        m_distortion;
     coeff_t*      m_trCoeff[3];       // transformed coefficient buffer per plane
@@ -245,11 +246,12 @@ public:
     void     setEmptyPart(const CUGeom& childGeom, uint32_t subPartIdx);
     void     copyToPic(uint32_t depth) const;
 
-	// convenient for the multi-rate method
-	uint8_t* getDepth() { return m_cuDepth; }
-	uint32_t getNumPartitions() { return m_numPartitions; }
-	uint32_t getCUAddr() { return m_cuAddr; }
-	uint8_t* getMRRefDepth() { return m_mrRefDepth; }
+    // convenient for the multi-rate method
+    uint8_t* getDepth() { return m_cuDepth; }
+    uint32_t getNumPartitions() { return m_numPartitions; }
+    uint32_t getCUAddr() { return m_cuAddr; }
+    uint8_t* getMRRefDepth1() { return m_mrRefDepth1; }
+    uint8_t* getMRRefDepth2() { return m_mrRefDepth2; }
 
     /* RD-0 methods called only from encodeResidue */
     void     copyFromPic(const CUData& ctu, const CUGeom& cuGeom, int csp, bool copyQp = true);

@@ -229,7 +229,11 @@ void x265_param_default(x265_param* param)
     param->selectiveSAO = 0;
 
     /* multi-rate mode */
-    param->mrMode = 0;
+    param->mr_load = 0;
+    param->mr_save = 0;
+    param->mr_save_filename = NULL;
+    param->mr_load_filename1 = NULL;
+    param->mr_load_filename2 = NULL;
 
     /* Coding Quality */
     param->cbQpOffset = 0;
@@ -1107,7 +1111,6 @@ int x265_param_parse(x265_param* p, const char* name, const char* value)
         p->rc.pbFactor = 1.0;
     }
     OPT("analysis-reuse-mode") p->analysisReuseMode = parseName(value, x265_analysis_names, bError); /*DEPRECATED*/
-    OPT("mr-mode") p->mrMode = atoi(value);
     OPT("sar")
     {
         p->vui.aspectRatioIdc = parseName(value, x265_sar_names, bError);
@@ -1377,6 +1380,11 @@ int x265_param_parse(x265_param* p, const char* name, const char* value)
             sscanf(value, "%d,%d,%d", &p->hmeRange[0], &p->hmeRange[1], &p->hmeRange[2]);
             p->bEnableHME = true;
         }
+        OPT("mr-load") p->mr_load = atoi(value);
+        OPT("mr-save") p->mr_save = atoi(value);
+        OPT("mr-loadfile1") p->mr_load_filename1 = strdup(value);
+        OPT("mr-loadfile2") p->mr_load_filename2 = strdup(value);
+        OPT("mr-savefile") p->mr_save_filename = strdup(value);
         else
             return X265_PARAM_BAD_NAME;
     }
@@ -2580,6 +2588,13 @@ void x265_copy_params(x265_param* dst, x265_param* src)
 
     dst->confWinRightOffset = src->confWinRightOffset;
     dst->confWinBottomOffset = src->confWinBottomOffset;
+
+    dst->mr_load = src->mr_load;
+    dst->mr_save = src->mr_save;
+    dst->mr_save_filename = strdup(src->mr_save_filename);
+    dst->mr_load_filename1 = strdup(src->mr_load_filename1);
+    dst->mr_load_filename2 = strdup(src->mr_load_filename2);
+
 #ifdef SVT_HEVC
     memcpy(dst->svtHevcParam, src->svtHevcParam, sizeof(EB_H265_ENC_CONFIGURATION));
 #endif

@@ -373,7 +373,11 @@ static const struct option long_options[] =
     { "no-cll", no_argument, NULL, 0 },
     { "hme-range", required_argument, NULL, 0 },
     { "abr-ladder", required_argument, NULL, 0 },
-    { "mr-mode", required_argument, NULL, 0 },           /* additional option for multi rate mode */
+    { "mr-save", required_argument, NULL, 0 },           /* additional options for multi rate mode */
+    { "mr-load",   required_argument, NULL, 0 },
+    { "mr-loadfile1",   required_argument, NULL, 0 },
+    { "mr-loadfile2",   required_argument, NULL, 0 },
+    { "mr-savefile",   required_argument, NULL, 0 },
     { 0, 0, 0, 0 },
     { 0, 0, 0, 0 },
     { 0, 0, 0, 0 },

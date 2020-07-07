@@ -84,6 +84,11 @@ DolbyVisionProfileSpec dovi[] =
 #define CONF_OFFSET_BYTES (2 * sizeof(int))
 static const char* defaultAnalysisFileName = "x265_analysis.dat";
 
+/* Multi-rate */
+static const char* defaultMultiRateSaveFileName = "x265_multirate_save.dat";
+static const char* defaultMultiRateLoadFileName1 = "x265_multirate_load1.dat";
+static const char* defaultMultiRateLoadFileName2 = "x265_multirate_load2.dat";
+
 using namespace X265_NS;
 
 Encoder::Encoder()
@@ -109,7 +114,9 @@ Encoder::Encoder()
     m_threadPool = NULL;
     m_analysisFileIn = NULL;
     m_analysisFileOut = NULL;
-    m_mrDataFile = NULL;
+    m_mr_loadFile1 = NULL;
+    m_mr_loadFile2 = NULL;
+    m_mr_saveFile = NULL;
     m_naluFile = NULL;
     m_offsetEmergency = NULL;
     m_iFrameNum = 0;
@@ -491,43 +498,80 @@ void Encoder::create()
     }
   }
 
-  if (m_param->analysisMultiPassRefine || m_param->analysisMultiPassDistortion)
-  {
-    const char* name = m_param->analysisReuseFileName;
-    if (!name)
-      name = defaultAnalysisFileName;
-    if (m_param->rc.bStatWrite)
+    if (m_param->analysisMultiPassRefine || m_param->analysisMultiPassDistortion)
     {
-      char* temp = strcatFilename(name, ".temp");
-      if (!temp)
-        m_aborted = true;
-      else
-      {
-        m_analysisFileOut = x265_fopen(temp, "wb");
-        X265_FREE(temp);
-      }
-      if (!m_analysisFileOut)
-      {
-        x265_log_file(NULL, X265_LOG_ERROR, "Analysis 2 pass: failed to open file %s.temp\n", name);
-        m_aborted = true;
-      }
+        const char* name = m_param->analysisReuseFileName;
+        if (!name)
+            name = defaultAnalysisFileName;
+        if (m_param->rc.bStatWrite)
+        {
+            char* temp = strcatFilename(name, ".temp");
+            if (!temp)
+                m_aborted = true;
+            else
+            {
+                m_analysisFileOut = x265_fopen(temp, "wb");
+                X265_FREE(temp);
+            }
+            if (!m_analysisFileOut)
+            {
+                x265_log_file(NULL, X265_LOG_ERROR, "Analysis 2 pass: failed to open file %s.temp\n", name);
+                m_aborted = true;
+            }
+        }
+        if (m_param->rc.bStatRead)
+        {
+            m_analysisFileIn = x265_fopen(name, "rb");
+            if (!m_analysisFileIn)
+            {
+                x265_log_file(NULL, X265_LOG_ERROR, "Analysis 2 pass: failed to open file %s\n", name);
+                m_aborted = true;
+            }
+        }
     }
-    if (m_param->rc.bStatRead)
-    {
-      m_analysisFileIn = x265_fopen(name, "rb");
-      if (!m_analysisFileIn)
-      {
-        x265_log_file(NULL, X265_LOG_ERROR, "Analysis 2 pass: failed to open file %s\n", name);
-        m_aborted = true;
-      }
-    }
-  }
 
-  // multi-rate mode
-  if (m_param->mrMode == 1)
-    m_mrDataFile = fopen("analysisData.bin", "wb"); // write, binary
-  else if (m_param->mrMode == 2)
-    m_mrDataFile = fopen("analysisData.bin", "rb"); // read, binary
+    // multi-rate mode
+    if (m_param->mr_save)
+    {
+        char* temp = strcatFilename(m_param->mr_save_filename, ".temp");
+        if (!temp)
+            m_aborted = true;
+        else
+        {
+            m_mr_saveFile = x265_fopen(temp, "wb");
+            X265_FREE(temp);
+        }
+        if (!m_mr_saveFile)
+        {
+            x265_log_file(NULL, X265_LOG_ERROR, "Multi-rate: failed to open savefile %s.temp\n", m_param->mr_save_filename);
+            m_aborted = true;
+        }
+    }
+
+    if (m_param->mr_load >= 1)
+    {
+        const char* name = m_param->mr_load_filename1;
+        if (!name)
+            name = defaultMultiRateLoadFileName1;
+        m_mr_loadFile1 = x265_fopen(name, "wb");
+        if (!m_mr_loadFile1)
+        {
+            x265_log_file(NULL, X265_LOG_ERROR, "Multi-rate: failed to open loadfile1 %s\n", name);
+            m_aborted = true;
+        }
+    }
+    if (m_param->mr_load == 2)
+    {
+        const char* name = m_param->mr_load_filename2;
+        if (!name)
+            name = defaultMultiRateLoadFileName2;
+        m_mr_loadFile2 = x265_fopen(name, "wb");
+        if (!m_mr_loadFile2)
+        {
+            x265_log_file(NULL, X265_LOG_ERROR, "Multi-rate: failed to open loadfile2 %s\n", name);
+            m_aborted = true;
+        }
+    }
 
   m_bZeroLatency = !m_param->bframes && !m_param->lookaheadDepth && m_param->frameNumThreads == 1 && m_param->maxSlices == 1;
   m_aborted |= parseLambdaFile(m_param);
@@ -953,50 +997,79 @@ void Encoder::destroy()
   if (m_analysisFileIn)
     fclose(m_analysisFileIn);
 
-  if (m_analysisFileOut)
-  {
-    int bError = 1;
-    fclose(m_analysisFileOut);
-    const char* name = m_param->analysisSave ? m_param->analysisSave : m_param->analysisReuseFileName;
-    if (!name)
-      name = defaultAnalysisFileName;
-    char* temp = strcatFilename(name, ".temp");
-    if (temp)
+    if (m_analysisFileOut)
     {
-      x265_unlink(name);
-      bError = x265_rename(temp, name);
+        int bError = 1;
+        fclose(m_analysisFileOut);
+        const char* name = m_param->analysisSave ? m_param->analysisSave : m_param->analysisReuseFileName;
+        if (!name)
+            name = defaultAnalysisFileName;
+        char* temp = strcatFilename(name, ".temp");
+        if (temp)
+        {
+            x265_unlink(name);
+            bError = x265_rename(temp, name);
+        }
+        if (bError)
+        {
+            x265_log_file(m_param, X265_LOG_ERROR, "failed to rename analysis stats file to \"%s\"\n", name);
+        }
+        X265_FREE(temp);
     }
-    if (bError)
+    if (m_naluFile)
+        fclose(m_naluFile);
+
+    /* Multi-rate*/
+    if (m_mr_loadFile1)
+        fclose(m_mr_loadFile1);
+    if (m_mr_loadFile2)
+        fclose(m_mr_loadFile2);
+    if (m_mr_saveFile)
     {
-      x265_log_file(m_param, X265_LOG_ERROR, "failed to rename analysis stats file to \"%s\"\n", name);
+        int bError = 1;
+        fclose(m_mr_saveFile);
+        const char* name = m_param->mr_save_filename;
+        if (!name)
+            name = defaultAnalysisFileName;
+        char* temp = strcatFilename(name, ".temp");
+        if (temp)
+        {
+            x265_unlink(name);
+            bError = x265_rename(temp, name);
+        }
+        if (bError)
+        {
+            x265_log_file(m_param, X265_LOG_ERROR, "Multi-rate: failed to rename analysis file to \"%s\"\n", name);
+        }
+        X265_FREE(temp);
     }
-    X265_FREE(temp);
-  }
-  if (m_naluFile)
-    fclose(m_naluFile);
-  if (m_mrDataFile)
-    fclose(m_mrDataFile);
 
 #ifdef SVT_HEVC
-  X265_FREE(m_svtAppData);
+    X265_FREE(m_svtAppData);
 #endif
-  if (m_param)
-  {
-    if (m_param->csvfpt)
-      fclose(m_param->csvfpt);
-    /* release string arguments that were strdup'd */
-    free((char*)m_param->rc.lambdaFileName);
-    free((char*)m_param->rc.statFileName);
-    free((char*)m_param->analysisReuseFileName);
-    free((char*)m_param->scalingLists);
-    free((char*)m_param->csvfn);
-    free((char*)m_param->numaPools);
-    free((char*)m_param->masteringDisplayColorVolume);
-    free((char*)m_param->toneMapFile);
-    free((char*)m_param->analysisSave);
-    free((char*)m_param->analysisLoad);
-    PARAM_NS::x265_param_free(m_param);
-  }
+    if (m_param)
+    {
+        if (m_param->csvfpt)
+            fclose(m_param->csvfpt);
+        /* release string arguments that were strdup'd */
+        free((char*)m_param->rc.lambdaFileName);
+        free((char*)m_param->rc.statFileName);
+        free((char*)m_param->analysisReuseFileName);
+        free((char*)m_param->scalingLists);
+        free((char*)m_param->csvfn);
+        free((char*)m_param->numaPools);
+        free((char*)m_param->masteringDisplayColorVolume);
+        free((char*)m_param->toneMapFile);
+        free((char*)m_param->analysisSave);
+        free((char*)m_param->analysisLoad);
+
+        /* Multi-rate*/
+        free((char*)m_param->mr_load_filename1);
+        free((char*)m_param->mr_load_filename2);
+        free((char*)m_param->mr_save_filename);
+
+        PARAM_NS::x265_param_free(m_param);
+    }
 }
 
 void Encoder::updateVbvPlan(RateControl* rc)
