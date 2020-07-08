@@ -1916,7 +1916,19 @@ void x265_print_params(x265_param* param)
             x265_log(param, X265_LOG_INFO, "VBV/HRD buffer / max-rate / init    : %d / %d / %.3f\n",
             param->rc.vbvBufferSize, param->rc.vbvMaxBitrate, param->rc.vbvBufferInit);
     }
-    
+
+    if (param->mr_save || param->mr_load)
+    {
+        x265_log(param, X265_LOG_INFO, "Multi-rate: Save mode: %d, Load mode: %d\n",
+                 param->mr_save, param->mr_load);
+        if (param->mr_save)
+            x265_log(param, X265_LOG_INFO, "Multi-rate: Save file: %s\n", param->mr_save_filename);
+        if (param->mr_load >= 1)
+          x265_log(param, X265_LOG_INFO, "Multi-rate: Load file1: %s\n", param->mr_load_filename1);
+        if (param->mr_save == 2)
+          x265_log(param, X265_LOG_INFO, "Multi-rate: Load file2: %s\n", param->mr_load_filename2);
+    }
+
     char buf[80] = { 0 };
     char tmp[40];
 #define TOOLOPT(FLAG, STR) if (FLAG) appendtool(param, buf, sizeof(buf), STR);
