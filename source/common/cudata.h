@@ -246,13 +246,6 @@ public:
     void     setEmptyPart(const CUGeom& childGeom, uint32_t subPartIdx);
     void     copyToPic(uint32_t depth) const;
 
-    // convenient for the multi-rate method
-    uint8_t* getDepth() { return m_cuDepth; }
-    uint32_t getNumPartitions() { return m_numPartitions; }
-    uint32_t getCUAddr() { return m_cuAddr; }
-    uint8_t* getMRRefDepth1() { return m_mrRefDepth1; }
-    uint8_t* getMRRefDepth2() { return m_mrRefDepth2; }
-
     /* RD-0 methods called only from encodeResidue */
     void     copyFromPic(const CUData& ctu, const CUGeom& cuGeom, int csp, bool copyQp = true);
     void     updatePic(uint32_t depth, int picCsp) const;

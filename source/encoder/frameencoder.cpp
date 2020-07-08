@@ -1523,36 +1523,30 @@ void FrameEncoder::processRowEncoder(int intRow, ThreadLocalData& tld)
         // Multi-rate mode
         int mr_save = m_param->mr_save;
         int mr_load = m_param->mr_load;
-        uint32_t numPartitions = ctu->getNumPartitions();
+        uint32_t numPartitions = ctu->m_numPartitions;
 
         // LOAD mode
         if (mr_load >= 1)
         {
-          size_t size_read;
-          int seek_in;
-          long seek_pos;
-          // position to read
-          seek_pos = sizeof(uint8_t) * numPartitions * (ctu->getCUAddr() + m_frame->m_encodeOrder * m_numCTUs);
-          // get to position
-          seek_in = fseek(m_top->m_mr_loadFile1, seek_pos, SEEK_SET);
-          if (seek_in) fputs("Seeking error", stderr);
-          // read
-          size_read = fread(ctu->getMRRefDepth1(), sizeof(uint8_t), numPartitions, m_top->m_mr_loadFile1);
-          if (size_read != numPartitions) fputs("Reading error", stderr);
+            // position to read
+            long seek_pos = sizeof(uint8_t) * numPartitions * (ctu->m_cuAddr + m_frame->m_encodeOrder * m_numCTUs);
+            // get to position
+            int seek_in = fseek(m_top->m_mr_loadFile1, seek_pos, SEEK_SET);
+            if (seek_in) fputs("Seeking error", stderr);
+            // read
+            size_t size_read = fread(ctu->m_mrRefDepth1, sizeof(uint8_t), numPartitions, m_top->m_mr_loadFile1);
+            if (size_read != numPartitions) fputs("Reading error", stderr);
         }
         if (mr_load == 2)
         {
-          size_t size_read;
-          int seek_in;
-          long seek_pos;
-          // position to read
-          seek_pos = sizeof(uint8_t) * numPartitions * (ctu->getCUAddr() + m_frame->m_encodeOrder * m_numCTUs);
-          // get to position
-          seek_in = fseek(m_top->m_mr_loadFile2, seek_pos, SEEK_SET);
-          if (seek_in) fputs("Seeking error", stderr);
-          // read
-          size_read = fread(ctu->getMRRefDepth2(), sizeof(uint8_t), numPartitions, m_top->m_mr_loadFile2);
-          if (size_read != numPartitions) fputs("Reading error", stderr);
+            // position to read
+            long seek_pos = sizeof(uint8_t) * numPartitions * (ctu->m_cuAddr + m_frame->m_encodeOrder * m_numCTUs);
+            // get to position
+            int seek_in = fseek(m_top->m_mr_loadFile2, seek_pos, SEEK_SET);
+            if (seek_in) fputs("Seeking error", stderr);
+            // read
+            size_t size_read = fread(ctu->m_mrRefDepth2, sizeof(uint8_t), numPartitions, m_top->m_mr_loadFile2);
+            if (size_read != numPartitions) fputs("Reading error", stderr);
         }
 
         // Does all the CU analysis, returns best top level mode decision
@@ -1572,16 +1566,16 @@ void FrameEncoder::processRowEncoder(int intRow, ThreadLocalData& tld)
           long seek_pos;
 
           // position to write
-          seek_pos = sizeof(uint8_t) * numPartitions * (ctu->getCUAddr() + m_frame->m_encodeOrder * m_numCTUs);
+          seek_pos = sizeof(uint8_t) * numPartitions * (ctu->m_cuAddr + m_frame->m_encodeOrder * m_numCTUs);
 
           // get to position
           seek_in = fseek(m_top->m_mr_saveFile, seek_pos, SEEK_SET);
           if (seek_in) fputs("Seeking error", stderr);
 
           // write
-          size_w = fwrite(ctu->getDepth(), sizeof(uint8_t), numPartitions, m_top->m_mr_saveFile);
+          size_w = fwrite(ctu->m_cuDepth, sizeof(uint8_t), numPartitions, m_top->m_mr_saveFile);
           if (size_w != numPartitions)
-            fputs("Reading error", stderr);
+              fputs("Reading error", stderr);
         }
 
         // take a sample of the current active worker count

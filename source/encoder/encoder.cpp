@@ -553,7 +553,7 @@ void Encoder::create()
         const char* name = m_param->mr_load_filename1;
         if (!name)
             name = defaultMultiRateLoadFileName1;
-        m_mr_loadFile1 = x265_fopen(name, "wb");
+        m_mr_loadFile1 = x265_fopen(name, "rb");
         if (!m_mr_loadFile1)
         {
             x265_log_file(NULL, X265_LOG_ERROR, "Multi-rate: failed to open loadfile1 %s\n", name);
@@ -565,7 +565,7 @@ void Encoder::create()
         const char* name = m_param->mr_load_filename2;
         if (!name)
             name = defaultMultiRateLoadFileName2;
-        m_mr_loadFile2 = x265_fopen(name, "wb");
+        m_mr_loadFile2 = x265_fopen(name, "rb");
         if (!m_mr_loadFile2)
         {
             x265_log_file(NULL, X265_LOG_ERROR, "Multi-rate: failed to open loadfile2 %s\n", name);
