@@ -5478,6 +5478,23 @@ void Encoder::writeAnalysisFile(x265_analysis_data* analysis, FrameData &curEncD
     }
   }
 
+  /* Multi-rate save mode */
+  if (m_param->analysisSaveReuseLevel == 11)
+  {
+      analysis->frameRecordSize = sizeof(analysis->frameRecordSize) + sizeof(analysis->poc) + sizeof(analysis->numCUsInFrame) +
+          sizeof(analysis->numPartitions) + sizeof(uint8_t) * analysis->numCUsInFrame * analysis->numPartitions;
+      X265_FWRITE(&analysis->frameRecordSize, sizeof(uint32_t), 1, m_analysisFileOut);
+      X265_FWRITE(&analysis->poc, sizeof(int), 1, m_analysisFileOut);
+      X265_FWRITE(&analysis->numCUsInFrame, sizeof(int), 1, m_analysisFileOut);
+      X265_FWRITE(&analysis->numPartitions, sizeof(int), 1, m_analysisFileOut);
+      for (uint32_t cuAddr = 0; cuAddr < analysis->numCUsInFrame; cuAddr++)
+      {
+          CUData* ctu = curEncData.getPicCTU(cuAddr);
+          X265_FWRITE(ctu->m_cuDepth, sizeof(uint8_t), analysis->numPartitions, m_analysisFileOut);
+      }
+      return;
+  }
+
   /* calculate frameRecordSize */
   analysis->frameRecordSize = sizeof(analysis->frameRecordSize) + sizeof(depthBytes) + sizeof(analysis->poc) + sizeof(analysis->sliceType) +
     sizeof(analysis->numCUsInFrame) + sizeof(analysis->numPartitions) + sizeof(analysis->bScenecut) + sizeof(analysis->satdCost);

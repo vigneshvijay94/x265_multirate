@@ -1736,8 +1736,8 @@ int x265_check_params(x265_param* param)
           "Constant QP is incompatible with 2pass");
     CHECK(param->rc.bStrictCbr && (param->rc.bitrate <= 0 || param->rc.vbvBufferSize <=0),
           "Strict-cbr cannot be applied without specifying target bitrate or vbv bufsize");
-    CHECK(param->analysisSave && (param->analysisSaveReuseLevel < 0 || param->analysisSaveReuseLevel > 10),
-        "Invalid analysis save refine level. Value must be between 1 and 10 (inclusive)");
+    CHECK(param->analysisSave && (param->analysisSaveReuseLevel < 0 || param->analysisSaveReuseLevel > 11),
+        "Invalid analysis save refine level. Value must be between 1 and 11 (inclusive)");
     CHECK(param->analysisLoad && (param->analysisLoadReuseLevel < 0 || param->analysisLoadReuseLevel > 10),
         "Invalid analysis load refine level. Value must be between 1 and 10 (inclusive)");
     CHECK(param->analysisLoad && (param->mvRefine < 1 || param->mvRefine > 3),
