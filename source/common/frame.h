@@ -141,6 +141,10 @@ public:
     pixel*                 m_edgeBitPlane;
     pixel*                 m_edgeBitPic;
 
+    /* Multi-rate */
+    uint8_t*               m_multirateRefDepth1;
+    uint8_t*               m_multirateRefDepth2;
+
     Frame();
 
     bool create(x265_param *param, float* quantOffsets);

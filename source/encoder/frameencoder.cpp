@@ -1520,35 +1520,6 @@ void FrameEncoder::processRowEncoder(int intRow, ThreadLocalData& tld)
         if (m_param->dynamicRd && (int32_t)(m_rce.qpaRc - m_rce.qpNoVbv) > 0)
             ctu->m_vbvAffected = true;
 
-        // Multi-rate mode
-        int mr_save = m_param->mr_save;
-        int mr_load = m_param->mr_load;
-        uint32_t numPartitions = ctu->m_numPartitions;
-
-        // LOAD mode
-        if (mr_load >= 1)
-        {
-            // position to read
-            long seek_pos = sizeof(uint8_t) * numPartitions * (ctu->m_cuAddr + m_frame->m_encodeOrder * m_numCTUs);
-            // get to position
-            int seek_in = fseek(m_top->m_mr_loadFile1, seek_pos, SEEK_SET);
-            if (seek_in) fputs("Seeking error", stderr);
-            // read
-            size_t size_read = fread(ctu->m_mrRefDepth1, sizeof(uint8_t), numPartitions, m_top->m_mr_loadFile1);
-            if (size_read != numPartitions) fputs("Reading error", stderr);
-        }
-        if (mr_load == 2)
-        {
-            // position to read
-            long seek_pos = sizeof(uint8_t) * numPartitions * (ctu->m_cuAddr + m_frame->m_encodeOrder * m_numCTUs);
-            // get to position
-            int seek_in = fseek(m_top->m_mr_loadFile2, seek_pos, SEEK_SET);
-            if (seek_in) fputs("Seeking error", stderr);
-            // read
-            size_t size_read = fread(ctu->m_mrRefDepth2, sizeof(uint8_t), numPartitions, m_top->m_mr_loadFile2);
-            if (size_read != numPartitions) fputs("Reading error", stderr);
-        }
-
         // Does all the CU analysis, returns best top level mode decision
         Mode& best = tld.analysis.compressCTU(*ctu, *m_frame, m_cuGeoms[m_ctuGeomMap[cuAddr]], rowCoder);
 
@@ -1557,26 +1528,6 @@ void FrameEncoder::processRowEncoder(int intRow, ThreadLocalData& tld)
         The data of frames in this interval will not be used by any future frames. */
         if (m_param->bDynamicRefine && m_top->m_startPoint <= m_frame->m_encodeOrder)
             collectDynDataRow(*ctu, &curRow.rowStats);
-
-        // WRITE mode
-        if (mr_save)
-        {
-          size_t size_w;
-          int seek_in;
-          long seek_pos;
-
-          // position to write
-          seek_pos = sizeof(uint8_t) * numPartitions * (ctu->m_cuAddr + m_frame->m_encodeOrder * m_numCTUs);
-
-          // get to position
-          seek_in = fseek(m_top->m_mr_saveFile, seek_pos, SEEK_SET);
-          if (seek_in) fputs("Seeking error", stderr);
-
-          // write
-          size_w = fwrite(ctu->m_cuDepth, sizeof(uint8_t), numPartitions, m_top->m_mr_saveFile);
-          if (size_w != numPartitions)
-              fputs("Reading error", stderr);
-        }
 
         // take a sample of the current active worker count
         ATOMIC_ADD(&m_totalActiveWorkerCount, m_activeWorkerCount);

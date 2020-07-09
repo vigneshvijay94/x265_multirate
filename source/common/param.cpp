@@ -1737,7 +1737,7 @@ int x265_check_params(x265_param* param)
     CHECK(param->rc.bStrictCbr && (param->rc.bitrate <= 0 || param->rc.vbvBufferSize <=0),
           "Strict-cbr cannot be applied without specifying target bitrate or vbv bufsize");
     CHECK(param->analysisSave && (param->analysisSaveReuseLevel < 0 || param->analysisSaveReuseLevel > 11),
-        "Invalid analysis save refine level. Value must be between 1 and 11 (inclusive)");
+        "Invalid analysis save refine level. Value must be between 1 and 11 (inclusive)");                      //Level 11 is multirate save mode
     CHECK(param->analysisLoad && (param->analysisLoadReuseLevel < 0 || param->analysisLoadReuseLevel > 10),
         "Invalid analysis load refine level. Value must be between 1 and 10 (inclusive)");
     CHECK(param->analysisLoad && (param->mvRefine < 1 || param->mvRefine > 3),
@@ -1917,15 +1917,14 @@ void x265_print_params(x265_param* param)
             param->rc.vbvBufferSize, param->rc.vbvMaxBitrate, param->rc.vbvBufferInit);
     }
 
-    if (param->mr_save || param->mr_load)
+    /* Multi-rate */
+    if (param->analysisSaveReuseLevel == 11 || param->mr_load == 1 || param->mr_load == 2)
     {
-        x265_log(param, X265_LOG_INFO, "Multi-rate: Save mode: %d, Load mode: %d\n",
-                 param->mr_save, param->mr_load);
-        if (param->mr_save)
-            x265_log(param, X265_LOG_INFO, "Multi-rate: Save file: %s\n", param->mr_save_filename);
-        if (param->mr_load >= 1)
+        if (param->analysisSaveReuseLevel == 11)
+            x265_log(param, X265_LOG_INFO, "Multi-rate: Save file: %s\n", param->analysisSave);
+        if (param->mr_load == 1 || param->mr_load == 2)
           x265_log(param, X265_LOG_INFO, "Multi-rate: Load file1: %s\n", param->mr_load_filename1);
-        if (param->mr_save == 2)
+        if (param->mr_load == 2)
           x265_log(param, X265_LOG_INFO, "Multi-rate: Load file2: %s\n", param->mr_load_filename2);
     }
 
@@ -2601,9 +2600,8 @@ void x265_copy_params(x265_param* dst, x265_param* src)
     dst->confWinRightOffset = src->confWinRightOffset;
     dst->confWinBottomOffset = src->confWinBottomOffset;
 
+    /* Multi-rate */
     dst->mr_load = src->mr_load;
-    dst->mr_save = src->mr_save;
-    dst->mr_save_filename = strdup(src->mr_save_filename);
     dst->mr_load_filename1 = strdup(src->mr_load_filename1);
     dst->mr_load_filename2 = strdup(src->mr_load_filename2);
 

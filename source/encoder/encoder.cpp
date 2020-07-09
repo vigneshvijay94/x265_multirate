@@ -548,7 +548,7 @@ void Encoder::create()
         }
     }
 
-    if (m_param->mr_load >= 1)
+    if (m_param->mr_load == 1 || m_param->mr_load == 2)
     {
         const char* name = m_param->mr_load_filename1;
         if (!name)
@@ -1976,6 +1976,11 @@ int Encoder::encode(const x265_picture* pic_in, x265_picture* pic_out)
           }
         }
       }
+    }
+    /* Multi-rate */
+    if (m_param->mr_load == 1 || m_param->mr_load == 2)
+    {
+        readMultiRateFile(inFrame->m_multirateRefDepth1, inFrame->m_multirateRefDepth2, inFrame->m_poc);
     }
     if (m_param->bUseRcStats && inputPic->rcData)
     {
@@ -4336,6 +4341,87 @@ void Encoder::configure(x265_param *p)
 
 }
 
+void Encoder::readMultiRateFile(uint8_t* refDepth1, uint8_t* refDepth2, int curPoc)
+{
+#define MULTIRATE_FREAD(val, size, readSize, fileOffset) \
+    if (fread(val, size, readSize, fileOffset) != readSize) \
+    { \
+        x265_log(NULL, X265_LOG_ERROR, "Error reading multirate data\n"); \
+        X265_FREE(refDepth1); \
+        if(m_param->mr_load == 2) \
+            X265_FREE(refDepth2); \
+        m_aborted = true; \
+        return; \
+    } \
+
+    static uint64_t totalConsumedBytes = 0;
+    int poc; uint32_t frameRecordSize;
+
+    if (m_param->mr_load == 1 || m_param->mr_load == 2)
+    {
+        fseeko(m_mr_loadFile1, totalConsumedBytes, SEEK_SET);
+        MULTIRATE_FREAD(&frameRecordSize, sizeof(uint32_t), 1, m_mr_loadFile1);
+        MULTIRATE_FREAD(&poc, sizeof(int), 1, m_mr_loadFile1);
+
+        uint64_t currentOffset = totalConsumedBytes;
+
+        /* Seeking to the right frame Record */
+        while (poc != curPoc && !feof(m_mr_loadFile1))
+        {
+            currentOffset += frameRecordSize;
+            fseeko(m_mr_loadFile1, currentOffset, SEEK_SET);
+            MULTIRATE_FREAD(&frameRecordSize, sizeof(uint32_t), 1, m_mr_loadFile1);
+            MULTIRATE_FREAD(&poc, sizeof(int), 1, m_mr_loadFile1);
+        }
+        if (poc != curPoc || feof(m_mr_loadFile1))
+        {
+            x265_log(NULL, X265_LOG_WARNING, "Error reading multirate data: Cannot find POC %d\n", curPoc);
+            X265_FREE(refDepth1);
+            if (m_param->analysisLoadReuseLevel == 12)
+                X265_FREE(refDepth2);
+            return;
+        }
+
+        /* Now arrived at the right frame, read the record */
+        int numCuInFrame, numPartitions = 0;
+        MULTIRATE_FREAD(&numCuInFrame, sizeof(int), 1, m_mr_loadFile1);
+        MULTIRATE_FREAD(&numPartitions, sizeof(int), 1, m_mr_loadFile1);
+        MULTIRATE_FREAD(refDepth1, sizeof(uint8_t), numCuInFrame * numPartitions, m_mr_loadFile1);
+    }
+
+    if (m_param->mr_load == 2)
+    {
+        fseeko(m_mr_loadFile2, totalConsumedBytes, SEEK_SET);
+        MULTIRATE_FREAD(&frameRecordSize, sizeof(uint32_t), 1, m_mr_loadFile2);
+        MULTIRATE_FREAD(&poc, sizeof(int), 1, m_mr_loadFile2);
+
+        uint64_t currentOffset = totalConsumedBytes;
+
+        /* Seeking to the right frame Record */
+        while (poc != curPoc && !feof(m_mr_loadFile2))
+        {
+            currentOffset += frameRecordSize;
+            fseeko(m_mr_loadFile2, currentOffset, SEEK_SET);
+            MULTIRATE_FREAD(&frameRecordSize, sizeof(uint32_t), 1, m_mr_loadFile2);
+            MULTIRATE_FREAD(&poc, sizeof(int), 1, m_mr_loadFile2);
+        }
+        if (poc != curPoc || feof(m_mr_loadFile2))
+        {
+            x265_log(NULL, X265_LOG_WARNING, "Error reading multirate data: Cannot find POC %d\n", curPoc);
+            X265_FREE(refDepth1);
+            if (m_param->analysisLoadReuseLevel == 12)
+                X265_FREE(refDepth2);
+            return;
+        }
+
+        /* Now arrived at the right frame, read the record */
+        int numCuInFrame, numPartitions = 0;
+        MULTIRATE_FREAD(&numCuInFrame, sizeof(int), 1, m_mr_loadFile2);
+        MULTIRATE_FREAD(&numPartitions, sizeof(int), 1, m_mr_loadFile2);
+        MULTIRATE_FREAD(refDepth2, sizeof(uint8_t), numCuInFrame * numPartitions, m_mr_loadFile2);
+    }
+}
+
 void Encoder::readAnalysisFile(x265_analysis_data* analysis, int curPoc, const x265_picture* picIn, int paramBytes)
 {
 #define X265_FREAD(val, size, readSize, fileOffset, src)\
@@ -5469,15 +5555,6 @@ void Encoder::writeAnalysisFile(x265_analysis_data* analysis, FrameData &curEncD
   uint32_t numDir, numPlanes;
   bool bIntraInInter = false;
 
-  if (!analysis->poc)
-  {
-    if (validateAnalysisData(&analysis->saveParam, 1) == -1)
-    {
-      m_aborted = true;
-      return;
-    }
-  }
-
   /* Multi-rate save mode */
   if (m_param->analysisSaveReuseLevel == 11)
   {
@@ -5493,6 +5570,15 @@ void Encoder::writeAnalysisFile(x265_analysis_data* analysis, FrameData &curEncD
           X265_FWRITE(ctu->m_cuDepth, sizeof(uint8_t), analysis->numPartitions, m_analysisFileOut);
       }
       return;
+  }
+
+  if (!analysis->poc)
+  {
+      if (validateAnalysisData(&analysis->saveParam, 1) == -1)
+      {
+          m_aborted = true;
+          return;
+      }
   }
 
   /* calculate frameRecordSize */

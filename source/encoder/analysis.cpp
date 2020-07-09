@@ -188,6 +188,17 @@ Mode& Analysis::compressCTU(CUData& ctu, Frame& frame, const CUGeom& cuGeom, con
         for (uint32_t i = 0; i < cuGeom.numPartitions; i++)
             ctu.m_log2CUSize[i] = (uint8_t)m_param->maxLog2CUSize - ctu.m_cuDepth[i];
     }
+
+    /* Multi-rate */
+    if (m_param->mr_load == 1 || m_param->mr_load == 2)
+    {
+        ctu.m_mrRefDepth1 = &m_frame->m_multirateRefDepth1[ctu.m_cuAddr * numPartition];
+        if (m_param->mr_load == 2)
+        {
+            ctu.m_mrRefDepth2 = &m_frame->m_multirateRefDepth2[ctu.m_cuAddr * numPartition];
+        }
+    }
+
     if (m_param->analysisMultiPassRefine && m_param->rc.bStatRead && (m_slice->m_sliceType != I_SLICE))
     {
         int numPredDir = m_slice->isInterP() ? 1 : 2;

@@ -349,6 +349,9 @@ public:
 
     void readAnalysisFile(x265_analysis_data* analysis, int poc, const x265_picture* picIn, int paramBytes, cuLocation cuLoc);
 
+    /* Multi-rate */
+    void readMultiRateFile(uint8_t* refDepth1, uint8_t* refDepth2, int curPoc);
+
     void computeDistortionOffset(x265_analysis_data* analysis);
 
     int getCUIndex(cuLocation* cuLoc, uint32_t* count, int bytes, int flag);

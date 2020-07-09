@@ -63,6 +63,10 @@ Frame::Frame()
     m_thetaPic = NULL;
     m_edgeBitPlane = NULL;
     m_edgeBitPic = NULL;
+
+    /* Multi-rate */
+    m_multirateRefDepth1 = NULL;
+    m_multirateRefDepth2 = NULL;
 }
 
 bool Frame::create(x265_param *param, float* quantOffsets)
@@ -84,6 +88,19 @@ bool Frame::create(x265_param *param, float* quantOffsets)
             CHECKED_MALLOC_ZERO(m_addOnDepth[i], uint8_t, uint32_t(param->num4x4Partitions));
             CHECKED_MALLOC_ZERO(m_addOnCtuInfo[i], uint8_t, uint32_t(param->num4x4Partitions));
             CHECKED_MALLOC_ZERO(m_addOnPrevChange[i], int, uint32_t(param->num4x4Partitions));
+        }
+    }
+
+    /* Multi-rate */
+    if (param->mr_load == 1 || param->mr_load == 2)
+    {
+        uint32_t widthInCTU = (m_param->sourceWidth + param->maxCUSize - 1) >> m_param->maxLog2CUSize;
+        uint32_t heightInCTU = (m_param->sourceHeight + param->maxCUSize - 1) >> m_param->maxLog2CUSize;
+        uint32_t numCTUsInFrame = widthInCTU * heightInCTU;
+        CHECKED_MALLOC_ZERO(m_multirateRefDepth1, uint8_t, numCTUsInFrame * param->num4x4Partitions);
+        if (param->mr_load == 2)
+        {
+            CHECKED_MALLOC_ZERO(m_multirateRefDepth2, uint8_t, numCTUsInFrame * param->num4x4Partitions);
         }
     }
 
@@ -266,6 +283,13 @@ void Frame::destroy()
         X265_FREE(m_addOnPrevChange);
         m_addOnPrevChange = NULL;
     }
+
+    /* Multi-rate */
+    if (m_multirateRefDepth1)
+        X265_FREE(m_multirateRefDepth1);
+    if (m_multirateRefDepth2)
+        X265_FREE(m_multirateRefDepth2);
+
     m_lowres.destroy();
     X265_FREE(m_rcData);
 
