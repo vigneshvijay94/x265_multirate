@@ -351,6 +351,7 @@ public:
 
     /* Multi-rate */
     void readMultiRateFile(uint8_t* refDepth1, uint8_t* refDepth2, int curPoc);
+    void writeMultiRateFile(FrameData &curEncData);
 
     void computeDistortionOffset(x265_analysis_data* analysis);
 

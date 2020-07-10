@@ -2054,6 +2054,11 @@ int Encoder::encode(const x265_picture* pic_in, x265_picture* pic_out)
       Slice *slice = outFrame->m_encData->m_slice;
       x265_frame_stats* frameData = NULL;
 
+      if (m_param->mr_save)
+      {
+          writeMultiRateFile(*outFrame->m_encData);
+      }
+
       /* Free up inputPic->analysisData since it has already been used */
       if ((m_param->analysisLoad && !m_param->analysisSave) || ((m_param->bAnalysisType == AVC_INFO) && slice->m_sliceType != I_SLICE))
         x265_free_analysis_data(m_param, &outFrame->m_analysisData);
@@ -5539,6 +5544,37 @@ void Encoder::copyDistortionData(x265_analysis_data* analysis, FrameData &curEnc
   }
 }
 
+/* Multi-rate save mode */
+void Encoder::writeMultiRateFile(FrameData &curEncData)
+{
+#define MULTIRATE_FWRITE(val, size, writeSize, fileOffset)\
+    if (fwrite(val, size, writeSize, fileOffset) < writeSize)\
+    {\
+        x265_log(NULL, X265_LOG_ERROR, "Error writing multirate data\n");\
+        m_aborted = true;\
+        return;\
+    }\
+
+    int poc = curEncData.m_slice->m_poc;
+    uint32_t frameRecordSize = 0;
+    uint32_t widthInCTU = (m_param->sourceWidth + m_param->maxCUSize - 1) >> m_param->maxLog2CUSize;
+    uint32_t heightInCTU = (m_param->sourceHeight + m_param->maxCUSize - 1) >> m_param->maxLog2CUSize;
+    uint32_t numCTUsInFrame = widthInCTU * heightInCTU;
+    int numPartitions = m_param->num4x4Partitions;
+
+    frameRecordSize = sizeof(frameRecordSize) + sizeof(poc) + sizeof(numCTUsInFrame) +
+        sizeof(numPartitions) + sizeof(uint8_t) * numCTUsInFrame * numPartitions;
+    MULTIRATE_FWRITE(&frameRecordSize, sizeof(uint32_t), 1, m_mr_saveFile);
+    MULTIRATE_FWRITE(&poc, sizeof(int), 1, m_mr_saveFile);
+    MULTIRATE_FWRITE(&numCTUsInFrame, sizeof(int), 1, m_mr_saveFile);
+    MULTIRATE_FWRITE(&numPartitions, sizeof(int), 1, m_mr_saveFile);
+    for (uint32_t cuAddr = 0; cuAddr < numCTUsInFrame; cuAddr++)
+    {
+        CUData* ctu = curEncData.getPicCTU(cuAddr);
+        MULTIRATE_FWRITE(ctu->m_cuDepth, sizeof(uint8_t), numPartitions, m_mr_saveFile);
+    }
+}
+
 void Encoder::writeAnalysisFile(x265_analysis_data* analysis, FrameData &curEncData)
 {
 
@@ -5554,23 +5590,6 @@ void Encoder::writeAnalysisFile(x265_analysis_data* analysis, FrameData &curEncD
   uint32_t depthBytes = 0;
   uint32_t numDir, numPlanes;
   bool bIntraInInter = false;
-
-  /* Multi-rate save mode */
-  if (m_param->analysisSaveReuseLevel == 11)
-  {
-      analysis->frameRecordSize = sizeof(analysis->frameRecordSize) + sizeof(analysis->poc) + sizeof(analysis->numCUsInFrame) +
-          sizeof(analysis->numPartitions) + sizeof(uint8_t) * analysis->numCUsInFrame * analysis->numPartitions;
-      X265_FWRITE(&analysis->frameRecordSize, sizeof(uint32_t), 1, m_analysisFileOut);
-      X265_FWRITE(&analysis->poc, sizeof(int), 1, m_analysisFileOut);
-      X265_FWRITE(&analysis->numCUsInFrame, sizeof(int), 1, m_analysisFileOut);
-      X265_FWRITE(&analysis->numPartitions, sizeof(int), 1, m_analysisFileOut);
-      for (uint32_t cuAddr = 0; cuAddr < analysis->numCUsInFrame; cuAddr++)
-      {
-          CUData* ctu = curEncData.getPicCTU(cuAddr);
-          X265_FWRITE(ctu->m_cuDepth, sizeof(uint8_t), analysis->numPartitions, m_analysisFileOut);
-      }
-      return;
-  }
 
   if (!analysis->poc)
   {
