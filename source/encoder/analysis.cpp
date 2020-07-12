@@ -538,10 +538,27 @@ uint64_t Analysis::compressIntraCU(const CUData& parentCTU, const CUGeom& cuGeom
     if (m_param->mr_load == 1)
     {
         uint8_t refDepth = parentCTU.m_mrRefDepth1[cuGeom.absPartIdx];
-        if (depth >= 1 && depth >= refDepth) // if depth is 0, we have to split (cf. below)
+        if (depth == refDepth) // if depth is 0, we have to split (cf. below)
         {
             mightSplit = false;
             mightNotSplit = true;
+            bDecidedDepth = true;
+        }
+    }
+    if (m_param->mr_load == 2)
+    {
+        uint8_t maxPossibleDepth = X265_MAX(parentCTU.m_mrRefDepth1[cuGeom.absPartIdx], parentCTU.m_mrRefDepth2[cuGeom.absPartIdx]);
+        uint8_t minPossibleDepth = X265_MIN(parentCTU.m_mrRefDepth1[cuGeom.absPartIdx], parentCTU.m_mrRefDepth2[cuGeom.absPartIdx]);
+        if (depth == maxPossibleDepth)
+        {
+            mightSplit = false;
+            mightNotSplit = true;
+            bDecidedDepth = true;
+        }
+        else if (depth < minPossibleDepth)
+        {
+            mightSplit = true;
+            mightNotSplit = false;
         }
     }
 
@@ -897,10 +914,25 @@ uint32_t Analysis::compressInterCU_dist(const CUData& parentCTU, const CUGeom& c
     if (m_param->mr_load == 1)
     {
         uint8_t refDepth = parentCTU.m_mrRefDepth1[cuGeom.absPartIdx];
-        if (depth >= minDepth && depth >= refDepth)
+        if (depth == refDepth) // if depth is 0, we have to split (cf. below)
         {
             mightSplit = false;
             mightNotSplit = true;
+        }
+    }
+    if (m_param->mr_load == 2)
+    {
+        uint8_t maxPossibleDepth = X265_MAX(parentCTU.m_mrRefDepth1[cuGeom.absPartIdx], parentCTU.m_mrRefDepth2[cuGeom.absPartIdx]);
+        uint8_t minPossibleDepth = X265_MIN(parentCTU.m_mrRefDepth1[cuGeom.absPartIdx], parentCTU.m_mrRefDepth2[cuGeom.absPartIdx]);
+        if (depth >= 1 && depth == maxPossibleDepth) // if depth is 0, we have to split (cf. below)
+        {
+            mightSplit = false;
+            mightNotSplit = true;
+        }
+        else if (depth < minPossibleDepth)
+        {
+            mightSplit = true;
+            mightNotSplit = false;
         }
     }
 
@@ -1210,16 +1242,7 @@ SplitData Analysis::compressInterCU_rd0_4(const CUData& parentCTU, const CUGeom&
         bool mightSplit = !(cuGeom.flags & CUGeom::LEAF);
         bool mightNotSplit = !(cuGeom.flags & CUGeom::SPLIT_MANDATORY);
         uint32_t minDepth = topSkipMinDepth(parentCTU, cuGeom);
-        // stop recursion based on MR reference depth
-        if (m_param->mr_load == 1)
-        {
-            uint8_t refDepth = parentCTU.m_mrRefDepth1[cuGeom.absPartIdx];
-            if (depth >= minDepth && depth >= refDepth)
-            {
-                mightSplit = false;
-                mightNotSplit = true;
-            }
-        }
+
         bool bDecidedDepth = parentCTU.m_cuDepth[cuGeom.absPartIdx] == depth;
         bool skipModes = false; /* Skip any remaining mode analyses at current depth */
         bool skipRecursion = false; /* Skip recursion */
@@ -1228,6 +1251,34 @@ SplitData Analysis::compressInterCU_rd0_4(const CUData& parentCTU, const CUGeom&
         bool chooseMerge = false;
         bool bCtuInfoCheck = false;
         int sameContentRef = 0;
+
+        // stop recursion based on MR reference depth
+        if (m_param->mr_load == 1)
+        {
+            uint8_t refDepth = parentCTU.m_mrRefDepth1[cuGeom.absPartIdx];
+            if (depth == refDepth) // if depth is 0, we have to split (cf. below)
+            {
+                mightSplit = false;
+                mightNotSplit = true;
+                bDecidedDepth = skipRecursion = true;
+            }
+        }
+        if (m_param->mr_load == 2)
+        {
+            uint8_t maxPossibleDepth = X265_MAX(parentCTU.m_mrRefDepth1[cuGeom.absPartIdx], parentCTU.m_mrRefDepth2[cuGeom.absPartIdx]);
+            uint8_t minPossibleDepth = X265_MIN(parentCTU.m_mrRefDepth1[cuGeom.absPartIdx], parentCTU.m_mrRefDepth2[cuGeom.absPartIdx]);
+            if (depth == maxPossibleDepth) // if depth is 0, we have to split (cf. below)
+            {
+                mightSplit = false;
+                mightNotSplit = true;
+                bDecidedDepth = skipRecursion = true;
+            }
+            else if (depth < minPossibleDepth)
+            {
+                mightSplit = true;
+                mightNotSplit = false;
+            }
+        }
 
         if (m_evaluateInter)
         {
@@ -1920,16 +1971,7 @@ SplitData Analysis::compressInterCU_rd5_6(const CUData& parentCTU, const CUGeom&
     {
         bool mightSplit = !(cuGeom.flags & CUGeom::LEAF);
         bool mightNotSplit = !(cuGeom.flags & CUGeom::SPLIT_MANDATORY);
-        // stop recursion based on MR reference depth
-        if (m_param->mr_load == 1)
-        {
-            uint8_t refDepth = parentCTU.m_mrRefDepth1[cuGeom.absPartIdx];
-            if (depth >= refDepth)
-            {
-                mightSplit = false;
-                mightNotSplit = true;
-            }
-        }
+
         bool bDecidedDepth = parentCTU.m_cuDepth[cuGeom.absPartIdx] == depth;
         bool skipRecursion = false;
         bool skipModes = false;
@@ -1937,6 +1979,34 @@ SplitData Analysis::compressInterCU_rd5_6(const CUData& parentCTU, const CUGeom&
         bool skipRectAmp = false;
         bool bCtuInfoCheck = false;
         int sameContentRef = 0;
+
+        // stop recursion based on MR reference depth
+        if (m_param->mr_load == 1)
+        {
+            uint8_t refDepth = parentCTU.m_mrRefDepth1[cuGeom.absPartIdx];
+            if (depth == refDepth) // if depth is 0, we have to split (cf. below)
+            {
+                mightSplit = false;
+                mightNotSplit = true;
+                bDecidedDepth = skipRecursion = true;
+            }
+        }
+        if (m_param->mr_load == 2)
+        {
+            uint8_t maxPossibleDepth = X265_MAX(parentCTU.m_mrRefDepth1[cuGeom.absPartIdx], parentCTU.m_mrRefDepth2[cuGeom.absPartIdx]);
+            uint8_t minPossibleDepth = X265_MIN(parentCTU.m_mrRefDepth1[cuGeom.absPartIdx], parentCTU.m_mrRefDepth2[cuGeom.absPartIdx]);
+            if (depth == maxPossibleDepth) // if depth is 0, we have to split (cf. below)
+            {
+                mightSplit = false;
+                mightNotSplit = true;
+                bDecidedDepth = skipRecursion = true;
+            }
+            else if (depth < minPossibleDepth)
+            {
+                mightSplit = true;
+                mightNotSplit = false;
+            }
+        }
 
         if (m_evaluateInter)
         {
