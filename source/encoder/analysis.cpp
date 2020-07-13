@@ -924,7 +924,7 @@ uint32_t Analysis::compressInterCU_dist(const CUData& parentCTU, const CUGeom& c
     {
         uint8_t maxPossibleDepth = X265_MAX(parentCTU.m_mrRefDepth1[cuGeom.absPartIdx], parentCTU.m_mrRefDepth2[cuGeom.absPartIdx]);
         uint8_t minPossibleDepth = X265_MIN(parentCTU.m_mrRefDepth1[cuGeom.absPartIdx], parentCTU.m_mrRefDepth2[cuGeom.absPartIdx]);
-        if (depth >= 1 && depth == maxPossibleDepth) // if depth is 0, we have to split (cf. below)
+        if (depth == maxPossibleDepth) // if depth is 0, we have to split (cf. below)
         {
             mightSplit = false;
             mightNotSplit = true;
