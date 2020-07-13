@@ -533,7 +533,10 @@ void Encoder::create()
     // multi-rate mode
     if (m_param->mr_save)
     {
-        char* temp = strcatFilename(m_param->mr_save_filename, ".temp");
+        const char* name = m_param->mr_save_filename;
+        if (!name)
+            name = defaultMultiRateSaveFileName;
+        char* temp = strcatFilename(name, ".temp");
         if (!temp)
             m_aborted = true;
         else
