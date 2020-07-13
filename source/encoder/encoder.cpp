@@ -4352,7 +4352,7 @@ void Encoder::configure(x265_param *p)
 void Encoder::readMultiRateFile(uint8_t* refDepth1, uint8_t* refDepth2, int curPoc)
 {
 #define MULTIRATE_FREAD(val, size, readSize, fileOffset) \
-    int readBytes = fread(val, size, readSize, fileOffset); \
+    readBytes = fread(val, size, readSize, fileOffset); \
     if (readBytes != readSize) \
     { \
         x265_log(NULL, X265_LOG_ERROR, "Error reading multirate data\n"); \
@@ -4363,6 +4363,7 @@ void Encoder::readMultiRateFile(uint8_t* refDepth1, uint8_t* refDepth2, int curP
         return; \
     } \
 
+    int readBytes = 0;
     static uint64_t totalConsumedBytes = 0;
     int poc; uint32_t frameRecordSize;
 
@@ -5552,7 +5553,7 @@ void Encoder::copyDistortionData(x265_analysis_data* analysis, FrameData &curEnc
 void Encoder::writeMultiRateFile(FrameData &curEncData)
 {
 #define MULTIRATE_FWRITE(val, size, writeSize, fileOffset) \
-    int writeBytes = fwrite(val, size, writeSize, fileOffset); \
+    writeBytes = fwrite(val, size, writeSize, fileOffset); \
     if (writeBytes < writeSize) \
     { \
         x265_log(NULL, X265_LOG_ERROR, "Error writing multirate data\n"); \
@@ -5560,6 +5561,7 @@ void Encoder::writeMultiRateFile(FrameData &curEncData)
         return; \
     } \
 
+    int writeBytes = 0;
     int poc = curEncData.m_slice->m_poc;
     uint32_t frameRecordSize = 0;
     uint32_t widthInCTU = (m_param->sourceWidth + m_param->maxCUSize - 1) >> m_param->maxLog2CUSize;
